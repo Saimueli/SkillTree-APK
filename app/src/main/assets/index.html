@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5, user-scalable=yes">
+    <meta name="theme-color" content="#121212">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>SkillTree</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html {
+          --bg: #121212;
+          --panel: #1e1e1e;
+          --panel-light: #2c2c2c;
+          --input-bg: #121212;
+          --grid-line: rgba(255, 255, 255, 0.04);
+          --border: rgba(255, 255, 255, 0.1);
+          --border-strong: rgba(255, 255, 255, 0.2);
+          --text: #e0e0e0;
+          --muted: #888888;
+          --gold: #f59e0b;
+          --gold-light: #fbbf24;
+          --blue: #3b82f6;
+          --green: #10b981;
+          --red: #ef4444;
+          --gray: #64748b;
+          --ease: cubic-bezier(0.16, 1, 0.3, 1);
+          --safe-top: env(safe-area-inset-top, 0px);
+          --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        html, body {
+          margin: 0;
+          padding: 0;
+          height: 100%;
+          width: 100%;
+          overflow: hidden;
+          background-color: var(--bg);
+          color: var(--text);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          font-size: 15px;
+          -webkit-tap-highlight-color: transparent;
+          user-select: none;
+          -webkit-user-select: none;
+          overscroll-behavior: none;
+        }
+
+        .topbar {
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px;
+          padding-top: calc(16px + var(--safe-top));
+          pointer-events: none;
+        }
+
+        .app-title {
+          pointer-events: auto;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 16px;
+          font-weight: 800;
+          color: #f1f5f9;
+        }
+
+        .app-title .dot {
+          width: 9px; height: 9px;
+          border-radius: 50%;
+          background: var(--gold);
+          box-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
+        }
+
+        .topbar-actions { pointer-events: auto; }
+
+        .icon-btn {
+          width: 42px; height: 42px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 20px;
+          color: var(--text);
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+          transition: transform .15s ease;
+        }
+        .icon-btn:active { transform: scale(0.92); }
+
+        .focus-pill {
+          position: absolute;
+          top: calc(60px + var(--safe-top));
+          left: 16px;
+          z-index: 19;
+          display: none;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--gold);
+          background: rgba(245, 158, 11, 0.12);
+          border: 1px solid rgba(245, 158, 11, 0.4);
+          border-radius: 999px;
+          cursor: pointer;
+          max-width: calc(100vw - 100px);
+          overflow: hidden;
+          white-space: nowrap;
+          animation: popIn .2s var(--ease);
+        }
+        .focus-pill.show { display: inline-flex; }
+        .focus-pill-label { overflow: hidden; text-overflow: ellipsis; }
+
+        .menu {
+          position: fixed;
+          z-index: 60;
+          top: calc(64px + var(--safe-top));
+          right: 16px;
+          min-width: 220px;
+          max-height: calc(100vh - 100px - var(--safe-top));
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          padding: 6px;
+          background: var(--panel);
+          border: 1px solid var(--border-strong);
+          border-radius: 16px;
+          box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+          transform-origin: top right;
+          animation: menuIn .18s var(--ease);
+        }
+
+        @keyframes menuIn {
+          from { opacity: 0; transform: scale(0.9); }
+          to { opacity: 1; transform: scale(1); }
+        }
+
+        .menu button {
+          display: block;
+          width: 100%;
+          padding: 12px 14px;
+          text-align: left;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text);
+          background: transparent;
+          border: 0;
+          border-radius: 10px;
+          cursor: pointer;
+        }
+        .menu button:active { background: var(--panel-light); }
+        .menu button:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+        .menu .sep { height: 1px; margin: 4px 8px; background: var(--border); }
+
+        .node-menu {
+          position: fixed;
+          z-index: 70;
+          min-width: 210px;
+          max-width: calc(100vw - 32px);
+          padding: 6px;
+          background: var(--panel);
+          border: 1px solid var(--border-strong);
+          border-radius: 14px;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.7);
+          transform-origin: top left;
+          animation: popIn .15s var(--ease);
+        }
+
+        .node-menu-title {
+          padding: 8px 12px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: .5px;
+          text-transform: uppercase;
+          color: var(--gold);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 100%;
+          border-bottom: 1px solid var(--border);
+          margin-bottom: 4px;
+        }
+
+        .node-menu button {
+          display: block;
+          width: 100%;
+          padding: 10px 12px;
+          text-align: left;
+          font-size: 13.5px;
+          font-weight: 600;
+          color: var(--text);
+          background: transparent;
+          border: 0;
+          border-radius: 8px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .node-menu button:active { background: var(--panel-light); }
+        .node-menu button:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+        .node-menu .sep { height: 1px; margin: 4px 8px; background: var(--border); }
+
+        #canvas-wrap {
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          overflow: auto;
+          background-color: var(--bg);
+          background-image:
+            linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+            linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+          background-size: 36px 36px;
+          touch-action: none;
+          overscroll-behavior: none;
+        }
+
+        #canvas { display: block; }
+
+        .node { cursor: grab; }
+        .node:active { cursor: grabbing; }
+        .node text { pointer-events: none; }
+        .node .node-badge { pointer-events: none; }
+
+        .node polygon, .node rect {
+          stroke-width: 2;
+          transition: stroke-width .15s ease, filter .15s ease;
+        }
+
+        .node-focus-goal polygon,
+        .node-focus-goal rect {
+          filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.7));
+          stroke-width: 3;
+        }
+
+        .node-start polygon { fill: #261e11; stroke: var(--gold); }
+        .node-start .node-label { fill: #fef3c7; font-weight: 800; }
+
+        .node-branch polygon { fill: #1e1e1e; stroke: var(--blue); }
+        .node-branch .node-label { fill: #bfdbfe; font-weight: 700; }
+
+        .status-in_progress rect { fill: #1e1e1e; stroke: var(--gray); }
+        .status-in_progress .node-label { fill: #e2e8f0; }
+
+        .status-done rect { fill: #064e3b; stroke: var(--green); }
+        .status-done .node-label { fill: #a7f3d0; }
+
+        .status-todo rect { fill: #451a1a; stroke: var(--red); }
+        .status-todo .node-label { fill: #fecaca; }
+
+        .node .node-desc { fill: var(--muted); }
+
+        .node.selected polygon, .node.selected rect { stroke-width: 3.5; }
+
+        .link {
+          fill: none;
+          stroke: #2c2c2c;
+          stroke-width: 2.5;
+          stroke-linecap: round;
+          transition: stroke .2s ease;
+        }
+        .link.status-done { stroke: #059669; }
+        .link.status-todo { stroke: #dc2626; }
+        .link.status-in_progress { stroke: #3b82f6; }
+
+        .zoom-pill {
+          position: fixed;
+          z-index: 30;
+          top: calc(70px + var(--safe-top));
+          left: 50%;
+          padding: 6px 14px;
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--muted);
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 999px;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+          pointer-events: none;
+          opacity: 0;
+          transform: translateX(-50%) translateY(-6px);
+          transition: opacity .2s ease, transform .2s var(--ease);
+        }
+        .zoom-pill.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        .selbar {
+          position: fixed;
+          z-index: 40;
+          left: 50%;
+          bottom: calc(16px + var(--safe-bottom));
+          transform: translateX(-50%);
+          width: calc(100% - 32px);
+          max-width: 440px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 14px;
+          background: var(--panel);
+          border: 1px solid var(--border-strong);
+          border-radius: 18px;
+          box-shadow: 0 16px 36px rgba(0,0,0,0.6);
+          animation: slideUp .22s var(--ease);
+        }
+
+        @keyframes slideUp {
+          from { opacity: 0; transform: translate(-50%, 20px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        .selbar-title {
+          flex: 1;
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--text);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .selbar-title .focus-tag { color: var(--gold); }
+        .selbar-title .step-tag { color: #93c5fd; }
+
+        .selbar-actions { display: flex; gap: 8px; }
+
+        .btn {
+          height: 40px;
+          padding: 0 14px;
+          font-size: 13.5px;
+          font-weight: 700;
+          color: var(--text);
+          background: var(--panel-light);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          cursor: pointer;
+          transition: transform .1s ease;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+        .btn.danger { color: #f87171; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); }
+        button.danger { color: #f87171; }
+
+        .modal {
+          position: fixed;
+          z-index: 100;
+          top: 0; right: 0; bottom: 0; left: 0;
+          display: flex; align-items: center; justify-content: center;
+          padding: 16px;
+          background: rgba(0, 0, 0, 0.75);
+          animation: fadeIn .18s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-card {
+          width: 100%;
+          max-width: 400px;
+          padding: 22px;
+          background: var(--panel);
+          border: 1px solid var(--border-strong);
+          border-radius: 20px;
+          box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+          animation: popIn .2s var(--ease);
+        }
+
+        @keyframes popIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+
+        .modal-card h2 { margin: 0 0 16px; font-size: 18px; font-weight: 800; }
+
+        .field { display: block; margin-bottom: 14px; }
+        .field > span {
+          display: block;
+          margin-bottom: 6px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: .5px;
+          text-transform: uppercase;
+          color: var(--muted);
+        }
+
+        .field input, .field textarea, .field select {
+          width: 100%;
+          padding: 12px;
+          font-size: 16px;
+          color: var(--text);
+          background: var(--input-bg);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          outline: none;
+        }
+
+        .field select {
+          appearance: none;
+          background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 12px center;
+          background-size: 16px;
+        }
+
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .hidden { display: none !important; }
+
+        #toast-container {
+          position: fixed;
+          z-index: 200;
+          bottom: calc(80px + var(--safe-bottom));
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          align-items: center;
+          pointer-events: none;
+          max-width: 90vw;
+        }
+
+        .toast {
+          padding: 10px 18px;
+          background: var(--panel);
+          border: 1px solid var(--border-strong);
+          border-radius: 10px;
+          color: var(--text);
+          font-size: 13px;
+          font-weight: 600;
+          opacity: 0;
+          transform: translateY(10px);
+          transition: opacity .25s ease, transform .25s ease;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+          max-width: 80vw;
+          text-align: center;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { color: #86efac; border-color: rgba(16,185,129,0.4); }
+        .toast.error { color: #fca5a5; border-color: rgba(239,68,68,0.4); }
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="app-title"><span class="dot"></span>SkillTree</div>
+    <div class="topbar-actions">
+        <button id="btn-menu" class="icon-btn" type="button">⋯</button>
+    </div>
+</header>
+
+<div class="focus-pill" id="focus-pill">
+    <span>🎯</span>
+    <span class="focus-pill-label" id="focus-pill-label"></span>
+</div>
+
+<nav id="menu" class="menu hidden">
+    <button type="button" data-menu="center">⊙ Center View</button>
+    <button type="button" data-menu="layout">⚙ Auto Layout</button>
+    <div class="sep"></div>
+    <button type="button" data-menu="focus">🎯 Focus Goal</button>
+    <button type="button" data-menu="step">1️⃣ Goal Step</button>
+    <button type="button" data-menu="clearSteps">🔄 Clear Steps</button>
+    <div class="sep"></div>
+    <button type="button" data-menu="export">📋 Copy JSON</button>
+    <button type="button" data-menu="import">📥 Paste JSON</button>
+    <div class="sep"></div>
+    <button type="button" data-menu="undo" id="btn-undo" disabled>↶ Undo</button>
+    <button type="button" data-menu="reset" class="danger">✕ Reset Tree</button>
+</nav>
+
+<div id="node-menu" class="node-menu hidden">
+    <div class="node-menu-title" id="node-menu-title"></div>
+    <button type="button" data-action="focus">🎯 Set Focus Goal</button>
+    <button type="button" data-action="step">1️⃣ Add Goal Step</button>
+    <div class="sep"></div>
+    <button type="button" data-action="edit">✎ Edit</button>
+    <button type="button" data-action="delete" class="danger">🗑 Delete</button>
+</div>
+
+<main id="canvas-wrap">
+    <svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000 3000">
+        <g id="layer-links"></g>
+        <g id="layer-nodes"></g>
+    </svg>
+</main>
+
+<div class="zoom-pill" id="zoom-pill">100%</div>
+
+<div id="toast-container"></div>
+
+<div id="selbar" class="selbar hidden">
+    <div class="selbar-title" id="sel-title"></div>
+    <div class="selbar-actions">
+        <button type="button" class="btn" data-act="add">+ Child</button>
+        <button type="button" class="btn" data-act="edit">Edit</button>
+        <button type="button" class="btn danger" data-act="del">Delete</button>
+    </div>
+</div>
+
+<div id="modal" class="modal hidden">
+    <div class="modal-card">
+        <h2 id="modal-title">Edit Node</h2>
+
+        <label class="field">
+            <span>Title</span>
+            <input id="in-title" type="text" maxlength="60" placeholder="e.g. Master Kotlin">
+        </label>
+
+        <label class="field" id="field-type">
+            <span>Node Type</span>
+            <select id="in-type">
+                <option value="task">🟩 Task (Status)</option>
+                <option value="branch">🔷 Category (Branch)</option>
+            </select>
+        </label>
+
+        <label class="field" id="field-status">
+            <span>Status</span>
+            <select id="in-status">
+                <option value="in_progress">⚪ In Progress</option>
+                <option value="done">🟢 Done / Completed</option>
+                <option value="todo">🔴 Not Done</option>
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Description (optional)</span>
+            <textarea id="in-desc" rows="3" maxlength="200" placeholder="Notes..."></textarea>
+        </label>
+
+        <div class="modal-actions">
+            <button id="btn-cancel" class="btn" type="button">Cancel</button>
+            <button id="btn-save" class="btn primary" type="button">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-import" class="modal hidden">
+    <div class="modal-card">
+        <h2>Import JSON</h2>
+        <label class="field">
+            <span>Paste JSON code here</span>
+            <textarea id="in-import-json" rows="6" placeholder='{"nodes": [...]}'></textarea>
+        </label>
+        <div class="modal-actions">
+            <button id="btn-import-cancel" class="btn" type="button">Cancel</button>
+            <button id="btn-import-submit" class="btn primary" type="button">Import</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+      'use strict';
+
+      var NS = 'http://www.w3.org/2000/svg';
+      var STORAGE_KEY = 'skilltree.v9';
+      var STORAGE_KEY_OLD = 'skilltree.v8';
+
+      var WORLD_W = 4000;
+      var WORLD_H = 3000;
+      var START_X = WORLD_W / 2;
+      var START_Y = 300;
+
+      var MIN_ZOOM = 0.30;
+      var MAX_ZOOM = 1.60;
+
+      var LONG_PRESS_MS = 500;
+      var LONG_PRESS_MOVE_THRESHOLD = 8;
+      var UNDO_LIMIT = 10;
+
+      function $(sel) { return document.querySelector(sel); }
+      function r1(v) { return Math.round(v * 10) / 10; }
+
+      function uid() {
+        return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+      }
+
+      var svg, wrap, layerLinks, layerNodes, zoomPill, selbar, selTitle, menu, modal, modalImport;
+      var focusPill, focusPillLabel, toastContainer;
+      var nodeMenu, nodeMenuTitle, nodeMenuTargetId = null;
+
+      var state = { nodes: [], view: { x: null, y: null, zoom: 1 } };
+      var nodeIndex = {};
+      var nodeEls = {};
+      var linkEls = {};
+      var selectedId = null;
+      var selectedEl = null;
+
+      var modalMode = null;
+      var modalTargetId = null;
+
+      var zoom = 1;
+      var activePointers = new Map();
+      var initialPinchDist = null;
+      var initialPinchZoom = 1;
+      var activeDrag = null;
+      var activePan = null;
+      var saveTimer = null;
+      var dragRAF = null;
+      var pendingDragNode = null;
+      var wrapCache = new Map();
+
+      var longPressTimer = null;
+      var longPressTargetId = null;
+
+      var undoStack = [];
+
+      function toast(msg, type) {
+        if (!toastContainer) return;
+        var el = document.createElement('div');
+        el.className = 'toast' + (type ? ' toast-' + type : '');
+        el.textContent = msg;
+        toastContainer.appendChild(el);
+        requestAnimationFrame(function () { el.classList.add('show'); });
+        setTimeout(function () {
+          el.classList.remove('show');
+          setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
+        }, 2200);
+      }
+
+      function nodeSize(n) {
+        if (n.type === 'start') return { w: 170, h: 170 };
+        if (n.type === 'branch') return { w: 190, h: 80 };
+        return { w: 180, h: 88 };
+      }
+
+      function starPoints(cx, cy, R, r, points) {
+        points = points || 5;
+        var out = [];
+        for (var i = 0; i < points * 2; i++) {
+          var rad = (i % 2 === 0) ? R : r;
+          var a = (Math.PI / points) * i - Math.PI / 2;
+          out.push((cx + rad * Math.cos(a)).toFixed(1) + ',' + (cy + rad * Math.sin(a)).toFixed(1));
+        }
+        return out.join(' ');
+      }
+
+      function wrapText(text, maxChars, maxLines) {
+        var key = text + '|' + maxChars + '|' + maxLines;
+        if (wrapCache.has(key)) return wrapCache.get(key);
+
+        var words = String(text || '').split(/\s+/).filter(Boolean);
+        var lines = [];
+        var cur = '';
+        for (var i = 0; i < words.length; i++) {
+          var w = words[i];
+          var test = cur ? cur + ' ' + w : w;
+          if (test.length > maxChars && cur) {
+            if (lines.length === maxLines - 1) {
+              lines.push(cur.slice(0, maxChars - 2) + '…');
+              wrapCache.set(key, lines);
+              return lines;
+            }
+            lines.push(cur);
+            cur = w;
+          } else {
+            cur = test;
+          }
+        }
+        if (cur) lines.push(cur);
+        if (!lines.length) lines.push('');
+        if (wrapCache.size > 500) wrapCache.clear();
+        wrapCache.set(key, lines);
+        return lines;
+      }
+
+      function save() {
+        try {
+          var rect = wrap.getBoundingClientRect();
+          state.view = {
+            x: wrap.scrollLeft + rect.width / 2,
+            y: wrap.scrollTop + rect.height / 2,
+            zoom: zoom
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {}
+      }
+
+      function debouncedSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(save, 250);
+      }
+
+      function normalizeState(data) {
+        if (!data || !Array.isArray(data.nodes) || !data.nodes.length) return null;
+        var seenFocus = false;
+        var usedSteps = {};
+        var normalized = [];
+        for (var i = 0; i < data.nodes.length; i++) {
+          var n = data.nodes[i];
+          if (!n || !n.id || !n.type) continue;
+          if (n.focusGoal === true) {
+            if (seenFocus) delete n.focusGoal;
+            else seenFocus = true;
+          } else {
+            delete n.focusGoal;
+          }
+          if (typeof n.goalStep === 'number' && n.goalStep > 0 && Math.floor(n.goalStep) === n.goalStep && !usedSteps[n.goalStep]) {
+            usedSteps[n.goalStep] = true;
+          } else {
+            delete n.goalStep;
+          }
+          normalized.push(n);
+        }
+        if (!normalized.length) return null;
+        data.nodes = normalized;
+        return data;
+      }
+
+      function load() {
+        try {
+          var raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_OLD);
+          if (!raw) return null;
+          return normalizeState(JSON.parse(raw));
+        } catch (e) { return null; }
+      }
+
+      function defaultState() {
+        return {
+          nodes: [
+            { id: uid(), type: 'start', title: 'Life', description: '', parentId: null, x: START_X, y: START_Y }
+          ],
+          view: { x: null, y: null, zoom: 1 }
+        };
+      }
+
+      function pushUndo(entry) {
+        undoStack.push(entry);
+        if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+        updateUndoButton();
+      }
+
+      function undo() {
+        if (!undoStack.length) { toast('Nothing to undo'); return; }
+        var entry = undoStack.pop();
+
+        if (entry.type === 'delete') {
+          for (var i = 0; i < entry.nodes.length; i++) {
+            state.nodes.push(entry.nodes[i]);
+          }
+          selectNode(entry.selectedBefore || null);
+          renderAll();
+          save();
+          toast('Undo: ' + entry.label, 'success');
+        } else if (entry.type === 'snapshot') {
+          try {
+            var restored = JSON.parse(entry.stateJSON);
+            if (!restored || !Array.isArray(restored.nodes)) throw new Error('bad');
+            state = restored;
+            selectNode(null);
+            renderAll();
+            centerView();
+            save();
+            toast('Undo: ' + entry.label, 'success');
+          } catch (err) {
+            toast('Undo failed', 'error');
+          }
+        }
+
+        updateUndoButton();
+      }
+
+      function updateUndoButton() {
+        var btn = $('#btn-undo');
+        if (!btn) return;
+        if (undoStack.length) {
+          btn.disabled = false;
+          var last = undoStack[undoStack.length - 1];
+          btn.textContent = '↶ Undo: ' + last.label;
+        } else {
+          btn.disabled = true;
+          btn.textContent = '↶ Undo';
+        }
+      }
+
+      function buildChildrenMap() {
+        var map = {};
+        for (var i = 0; i < state.nodes.length; i++) {
+          var n = state.nodes[i];
+          if (n.parentId) {
+            if (!map[n.parentId]) map[n.parentId] = [];
+            map[n.parentId].push(n);
+          }
+        }
+        return map;
+      }
+
+      function computeAutoLayout() {
+        var root = getRoot();
+        if (!root) return;
+        var childMap = buildChildrenMap();
+        var H_GAP = 40, V_GAP = 90;
+
+        function childrenOfLocal(id) { return childMap[id] || []; }
+
+        function subtreeWidth(n) {
+          var kids = childrenOfLocal(n.id);
+          if (!kids.length) return nodeSize(n).w;
+          var total = 0;
+          for (var i = 0; i < kids.length; i++) {
+            total += subtreeWidth(kids[i]);
+            if (i) total += H_GAP;
+          }
+          return Math.max(nodeSize(n).w, total);
+        }
+
+        function place(n, cx, cy) {
+          n.x = cx; n.y = cy;
+          var kids = childrenOfLocal(n.id);
+          if (!kids.length) return;
+          var total = 0;
+          for (var i = 0; i < kids.length; i++) {
+            total += subtreeWidth(kids[i]);
+            if (i) total += H_GAP;
+          }
+          var x = cx - total / 2;
+          var topY = cy + nodeSize(n).h / 2 + V_GAP;
+          for (var j = 0; j < kids.length; j++) {
+            var k = kids[j];
+            var kw = subtreeWidth(k);
+            place(k, x + kw / 2, topY + nodeSize(k).h / 2);
+            x += kw + H_GAP;
+          }
+        }
+
+        place(root, START_X, START_Y);
+      }
+
+      function indexNodes() {
+        nodeIndex = {};
+        for (var i = 0; i < state.nodes.length; i++) {
+          nodeIndex[state.nodes[i].id] = state.nodes[i];
+        }
+      }
+
+      function getRoot() {
+        for (var i = 0; i < state.nodes.length; i++) {
+          if (state.nodes[i].type === 'start') return state.nodes[i];
+        }
+        return null;
+      }
+
+      function getFocusNode() {
+        for (var i = 0; i < state.nodes.length; i++) {
+          if (state.nodes[i].focusGoal) return state.nodes[i];
+        }
+        return null;
+      }
+
+      function childrenOf(id) {
+        var out = [];
+        for (var i = 0; i < state.nodes.length; i++) {
+          if (state.nodes[i].parentId === id) out.push(state.nodes[i]);
+        }
+        return out;
+      }
+
+      function nodeClass(n) {
+        var c = 'node node-' + n.type;
+        if (n.type === 'task' && n.status) c += ' status-' + n.status;
+        if (n.focusGoal) c += ' node-focus-goal';
+        return c;
+      }
+
+      function linkPath(p, c) {
+        var y1 = p.y + nodeSize(p).h / 2;
+        var y2 = c.y - nodeSize(c).h / 2;
+        var my = (y1 + y2) / 2;
+        return 'M' + r1(p.x) + ' ' + r1(y1) +
+               'C' + r1(p.x) + ' ' + r1(my) + ' ' +
+                     r1(c.x) + ' ' + r1(my) + ' ' +
+                     r1(c.x) + ' ' + r1(y2);
+      }
+
+      function createBadgeEl(n) {
+        if (n.type === 'start') return null;
+        if (!n.focusGoal && !n.goalStep) return null;
+
+        var size = nodeSize(n);
+        var bx = size.w / 2 - 6;
+        var by = -size.h / 2 + 6;
+        var isFocus = !!n.focusGoal;
+
+        var g = document.createElementNS(NS, 'g');
+        g.setAttribute('class', 'node-badge');
+
+        var circle = document.createElementNS(NS, 'circle');
+        circle.setAttribute('cx', r1(bx));
+        circle.setAttribute('cy', r1(by));
+        circle.setAttribute('r', 11);
+        circle.setAttribute('fill', isFocus ? '#f59e0b' : '#3b82f6');
+        circle.setAttribute('stroke', isFocus ? '#fbbf24' : '#60a5fa');
+        circle.setAttribute('stroke-width', 2);
+        g.appendChild(circle);
+
+        var text = document.createElementNS(NS, 'text');
+        text.setAttribute('x', r1(bx));
+        text.setAttribute('y', r1(by));
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        text.setAttribute('font-size', n.goalStep ? '12' : '14');
+        text.setAttribute('font-weight', '800');
+        text.setAttribute('fill', isFocus ? '#1a1a1a' : '#ffffff');
+        text.textContent = n.goalStep ? String(n.goalStep) : '★';
+        g.appendChild(text);
+
+        return g;
+      }
+
+      function buildNodeEl(n) {
+        var size = nodeSize(n);
+        var w = size.w, h = size.h;
+
+        var g = document.createElementNS(NS, 'g');
+        g.setAttribute('class', nodeClass(n));
+        g.setAttribute('data-id', n.id);
+        g.setAttribute('transform', 'translate(' + r1(n.x) + ' ' + r1(n.y) + ')');
+
+        var shape;
+        if (n.type === 'start') {
+          shape = document.createElementNS(NS, 'polygon');
+          shape.setAttribute('points', starPoints(0, 0, 84, 41, 5));
+        } else if (n.type === 'branch') {
+          var s = 16;
+          shape = document.createElementNS(NS, 'polygon');
+          shape.setAttribute('points',
+            r1(-w / 2 + s) + ',' + r1(-h / 2) + ' ' +
+            r1(w / 2)     + ',' + r1(-h / 2) + ' ' +
+            r1(w / 2 - s) + ',' + r1(h / 2)  + ' ' +
+            r1(-w / 2)    + ',' + r1(h / 2));
+        } else {
+          shape = document.createElementNS(NS, 'rect');
+          shape.setAttribute('x', r1(-w / 2));
+          shape.setAttribute('y', r1(-h / 2));
+          shape.setAttribute('width', w);
+          shape.setAttribute('height', h);
+          shape.setAttribute('rx', 14);
+        }
+        g.appendChild(shape);
+
+        var titleFS = n.type === 'branch' ? 15 : 14.5;
+        var titleLines = wrapText(n.title, 20, 2);
+        var descLines = (n.type !== 'start' && n.description) ? wrapText(n.description, 22, 2) : [];
+
+        var titleLH = titleFS + 4;
+        var descLH = 14;
+        var blockH = titleLines.length * titleLH + (descLines.length ? 4 + descLines.length * descLH : 0);
+
+        var y = -blockH / 2;
+        var i, t;
+
+        for (i = 0; i < titleLines.length; i++) {
+          t = document.createElementNS(NS, 'text');
+          t.setAttribute('class', 'node-label');
+          t.setAttribute('x', 0);
+          t.setAttribute('y', r1(y + titleFS * 0.8));
+          t.setAttribute('text-anchor', 'middle');
+          t.setAttribute('font-size', titleFS);
+          t.textContent = titleLines[i];
+          g.appendChild(t);
+          y += titleLH;
+        }
+
+        if (descLines.length) {
+          y += 4;
+          for (i = 0; i < descLines.length; i++) {
+            t = document.createElementNS(NS, 'text');
+            t.setAttribute('class', 'node-desc');
+            t.setAttribute('x', 0);
+            t.setAttribute('y', r1(y + 11 * 0.8));
+            t.setAttribute('text-anchor', 'middle');
+            t.setAttribute('font-size', 11);
+            t.textContent = descLines[i];
+            g.appendChild(t);
+            y += descLH;
+          }
+        }
+
+        var badge = createBadgeEl(n);
+        if (badge) g.appendChild(badge);
+
+        return g;
+      }
+
+      function refreshFocusPill() {
+        var f = getFocusNode();
+        if (f) {
+          focusPillLabel.textContent = f.title;
+          focusPill.classList.add('show');
+        } else {
+          focusPill.classList.remove('show');
+        }
+      }
+
+      function renderAll() {
+        indexNodes();
+
+        layerLinks.textContent = '';
+        layerNodes.textContent = '';
+        nodeEls = {};
+        linkEls = {};
+        selectedEl = null;
+
+        var i, n, p, path;
+        var lfrag = document.createDocumentFragment();
+        for (i = 0; i < state.nodes.length; i++) {
+          n = state.nodes[i];
+          if (!n.parentId) continue;
+          p = nodeIndex[n.parentId];
+          if (!p) continue;
+
+          path = document.createElementNS(NS, 'path');
+          var linkClass = 'link';
+          if (n.type === 'task' && n.status) linkClass += ' status-' + n.status;
+          path.setAttribute('class', linkClass);
+          path.setAttribute('d', linkPath(p, n));
+          path.__from = p.id;
+          path.__to = n.id;
+          lfrag.appendChild(path);
+
+          (linkEls[n.id] || (linkEls[n.id] = [])).push(path);
+          (linkEls[p.id] || (linkEls[p.id] = [])).push(path);
+        }
+        layerLinks.appendChild(lfrag);
+
+        var nfrag = document.createDocumentFragment();
+        for (i = 0; i < state.nodes.length; i++) {
+          n = state.nodes[i];
+          var g = buildNodeEl(n);
+          nfrag.appendChild(g);
+          nodeEls[n.id] = g;
+          if (n.id === selectedId) selectedEl = g;
+        }
+        layerNodes.appendChild(nfrag);
+
+        if (selectedEl) selectedEl.classList.add('selected');
+
+        refreshFocusPill();
+      }
+
+      function moveNodeEl(n) {
+        var g = nodeEls[n.id];
+        if (g) g.setAttribute('transform', 'translate(' + r1(n.x) + ' ' + r1(n.y) + ')');
+      }
+
+      function refreshLinks(id) {
+        var arr = linkEls[id];
+        if (!arr) return;
+        for (var i = 0; i < arr.length; i++) {
+          var path = arr[i];
+          var a = nodeIndex[path.__from];
+          var b = nodeIndex[path.__to];
+          if (a && b) path.setAttribute('d', linkPath(a, b));
+        }
+      }
+
+      function updateSelection() {
+        if (selectedEl) selectedEl.classList.remove('selected');
+        selectedEl = selectedId ? (nodeEls[selectedId] || null) : null;
+        if (selectedEl) selectedEl.classList.add('selected');
+      }
+
+      function applyZoom() {
+        var w = Math.round(WORLD_W * zoom);
+        var h = Math.round(WORLD_H * zoom);
+        svg.setAttribute('width', w);
+        svg.setAttribute('height', h);
+        var gs = 36 * zoom;
+        wrap.style.backgroundSize = gs.toFixed(2) + 'px ' + gs.toFixed(2) + 'px';
+      }
+
+      var pillTimer = null;
+      function showZoomPill() {
+        zoomPill.textContent = Math.round(zoom * 100) + '%';
+        zoomPill.classList.add('show');
+        clearTimeout(pillTimer);
+        pillTimer = setTimeout(function () { zoomPill.classList.remove('show'); }, 1100);
+      }
+
+      function setZoom(z, clientX, clientY) {
+        z = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z));
+        if (Math.abs(z - zoom) < 0.001) return;
+
+        var rect = wrap.getBoundingClientRect();
+        var ax = (clientX == null) ? rect.width / 2 : clientX - rect.left;
+        var ay = (clientY == null) ? rect.height / 2 : clientY - rect.top;
+
+        var wx = (wrap.scrollLeft + ax) / zoom;
+        var wy = (wrap.scrollTop + ay) / zoom;
+
+        zoom = z;
+        applyZoom();
+
+        wrap.scrollLeft = wx * zoom - ax;
+        wrap.scrollTop = wy * zoom - ay;
+
+        showZoomPill();
+        debouncedSave();
+      }
+
+      function centerOn(x, y) {
+        var rect = wrap.getBoundingClientRect();
+        wrap.scrollLeft = x * zoom - rect.width / 2;
+        wrap.scrollTop = y * zoom - rect.height / 2;
+        save();
+      }
+
+      function centerView() {
+        var root = getRoot();
+        if (root) centerOn(root.x, root.y);
+        else centerOn(WORLD_W / 2, WORLD_H / 2);
+      }
+
+      function selectNode(id) {
+        selectedId = id;
+        updateSelection();
+        if (selectedId) {
+          var n = nodeIndex[selectedId];
+          if (n) {
+            var html = '';
+            if (n.focusGoal) html += '<span class="focus-tag">🎯</span> ';
+            if (n.goalStep) html += '<span class="step-tag">#' + n.goalStep + '</span> ';
+            html += escapeHtml(n.title);
+            selTitle.innerHTML = html;
+            selbar.classList.remove('hidden');
+          }
+        } else {
+          selbar.classList.add('hidden');
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function toggleFocusGoal(id) {
+        if (!id) { toast('Select a task first', 'error'); return; }
+        var n = nodeIndex[id];
+        if (!n || n.type === 'start') { toast('Pick a task, not root', 'error'); return; }
+
+        var wasFocus = !!n.focusGoal;
+        for (var i = 0; i < state.nodes.length; i++) delete state.nodes[i].focusGoal;
+
+        if (wasFocus) {
+          toast('Focus goal cleared');
+        } else {
+          n.focusGoal = true;
+          toast('Focus: ' + n.title, 'success');
+        }
+
+        renderAll();
+        selectNode(id);
+        save();
+      }
+
+      function toggleGoalStep(id) {
+        if (!id) { toast('Select a task first', 'error'); return; }
+        var n = nodeIndex[id];
+        if (!n || n.type === 'start') { toast('Pick a task, not root', 'error'); return; }
+
+        if (n.goalStep) {
+          var removed = n.goalStep;
+          delete n.goalStep;
+          for (var i = 0; i < state.nodes.length; i++) {
+            var s = state.nodes[i].goalStep;
+            if (typeof s === 'number' && s > removed) {
+              state.nodes[i].goalStep = s - 1;
+            }
+          }
+          toast('Step removed');
+        } else {
+          var next = 1;
+          for (var j = 0; j < state.nodes.length; j++) {
+            var s2 = state.nodes[j].goalStep;
+            if (typeof s2 === 'number' && s2 >= next) next = s2 + 1;
+          }
+          n.goalStep = next;
+          toast('Step #' + next, 'success');
+        }
+
+        renderAll();
+        selectNode(id);
+        save();
+      }
+
+      function clearAllSteps() {
+        var any = false;
+        for (var i = 0; i < state.nodes.length; i++) {
+          if (state.nodes[i].goalStep) {
+            delete state.nodes[i].goalStep;
+            any = true;
+          }
+        }
+        if (!any) { toast('No steps to clear'); return; }
+        renderAll();
+        if (selectedId) selectNode(selectedId);
+        save();
+        toast('All steps cleared');
+      }
+
+      function updateModalVisibility() {
+        var type = $('#in-type').value;
+        var fStatus = $('#field-status');
+        fStatus.style.display = (type === 'branch') ? 'none' : 'block';
+      }
+
+      function openModal(mode, targetId) {
+        modalMode = mode;
+        modalTargetId = targetId;
+
+        var titleEl = $('#modal-title');
+        var inTitle = $('#in-title');
+        var inType = $('#in-type');
+        var inStatus = $('#in-status');
+        var inDesc = $('#in-desc');
+        var fType = $('#field-type');
+
+        if (mode === 'add') {
+          titleEl.textContent = 'Add Child Node';
+          inTitle.value = '';
+          inType.value = 'task';
+          inStatus.value = 'in_progress';
+          inDesc.value = '';
+          fType.style.display = 'block';
+        } else if (mode === 'edit') {
+          var n = nodeIndex[targetId];
+          if (!n) return;
+          titleEl.textContent = 'Edit Node';
+          inTitle.value = n.title || '';
+          inDesc.value = n.description || '';
+          if (n.type === 'start') {
+            fType.style.display = 'none';
+          } else {
+            fType.style.display = 'block';
+            inType.value = n.type === 'branch' ? 'branch' : 'task';
+            if (n.status) inStatus.value = n.status;
+          }
+        }
+
+        updateModalVisibility();
+        modal.classList.remove('hidden');
+        setTimeout(function () { inTitle.focus(); }, 50);
+      }
+
+      function closeModal() {
+        modal.classList.add('hidden');
+        modalMode = null;
+        modalTargetId = null;
+      }
+
+      function saveModal() {
+        var title = $('#in-title').value.trim();
+        if (!title) {
+          $('#in-title').focus();
+          return;
+        }
+        var type = $('#in-type').value;
+        var status = $('#in-status').value;
+        var desc = $('#in-desc').value.trim();
+
+        if (modalMode === 'add') {
+          var parent = nodeIndex[modalTargetId];
+          if (!parent) { closeModal(); return; }
+
+          var newNode = {
+            id: uid(),
+            type: type,
+            title: title,
+            description: desc,
+            parentId: parent.id,
+            x: parent.x + (Math.random() * 40 - 20),
+            y: parent.y + 130
+          };
+          if (type === 'task') newNode.status = status;
+
+          state.nodes.push(newNode);
+          renderAll();
+          selectNode(newNode.id);
+          save();
+        } else if (modalMode === 'edit') {
+          var n = nodeIndex[modalTargetId];
+          if (!n) { closeModal(); return; }
+
+          n.title = title;
+          n.description = desc;
+          if (n.type !== 'start') {
+            if (type === 'branch') {
+              n.type = 'branch';
+              delete n.status;
+            } else {
+              n.type = 'task';
+              n.status = status;
+            }
+          }
+
+          renderAll();
+          selectNode(n.id);
+          save();
+        }
+
+        closeModal();
+      }
+
+      function deleteNodeAndSubtree(id) {
+        var n = nodeIndex[id];
+        if (n && n.type === 'start') {
+          toast('Root cannot be deleted', 'error');
+          return;
+        }
+
+        var toRemove = {};
+        function collect(nid) {
+          toRemove[nid] = true;
+          var kids = childrenOf(nid);
+          for (var i = 0; i < kids.length; i++) collect(kids[i].id);
+        }
+        collect(id);
+
+        var removedNodes = state.nodes.filter(function (node) { return toRemove[node.id]; });
+        var removedCount = removedNodes.length;
+
+        pushUndo({
+          type: 'delete',
+          nodes: removedNodes,
+          selectedBefore: selectedId,
+          label: 'Delete "' + (n ? n.title : 'node') + '"'
+        });
+
+        state.nodes = state.nodes.filter(function (node) { return !toRemove[node.id]; });
+        selectNode(null);
+        renderAll();
+        save();
+
+        toast(removedCount > 1 ? 'Deleted ' + removedCount + ' nodes' : 'Node deleted', 'success');
+      }
+
+      function resetTree() {
+        if (!confirm('Reset tree to default?')) return;
+        pushUndo({
+          type: 'snapshot',
+          stateJSON: JSON.stringify(state),
+          label: 'Reset tree'
+        });
+        state = defaultState();
+        selectNode(null);
+        computeAutoLayout();
+        renderAll();
+        centerView();
+        save();
+        toast('Tree reset');
+      }
+
+      function copyJSONToClipboard() {
+        try {
+          var jsonString = JSON.stringify(state, null, 2);
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(jsonString).then(function () {
+              toast('Copied to clipboard', 'success');
+            }).catch(function () {
+              fallbackCopyText(jsonString);
+            });
+          } else {
+            fallbackCopyText(jsonString);
+          }
+        } catch (err) {
+          toast('Copy failed', 'error');
+        }
+      }
+
+      function fallbackCopyText(text) {
+        var textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.top = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          var ok = document.execCommand('copy');
+          if (ok) toast('Copied to clipboard', 'success');
+          else toast('Copy failed', 'error');
+        } catch (err) {
+          toast('Copy failed', 'error');
+        }
+        document.body.removeChild(textArea);
+      }
+
+      function openImportModal() {
+        $('#in-import-json').value = '';
+        modalImport.classList.remove('hidden');
+        setTimeout(function () { $('#in-import-json').focus(); }, 50);
+      }
+
+      function closeImportModal() {
+        modalImport.classList.add('hidden');
+      }
+
+      function processImport() {
+        var rawText = $('#in-import-json').value.trim();
+        if (!rawText) { toast('Paste JSON first', 'error'); return; }
+        try {
+          var parsed = JSON.parse(rawText);
+          var normalized = normalizeState(parsed);
+          if (!normalized) { toast('Invalid JSON structure', 'error'); return; }
+          state = normalized;
+          selectNode(null);
+          if (state.view && state.view.zoom) zoom = state.view.zoom;
+          applyZoom();
+          renderAll();
+          if (state.view && state.view.x != null && state.view.y != null) {
+            var rect = wrap.getBoundingClientRect();
+            wrap.scrollLeft = state.view.x - rect.width / 2;
+            wrap.scrollTop = state.view.y - rect.height / 2;
+          } else {
+            centerView();
+          }
+          save();
+          closeImportModal();
+
+          var focusCount = 0;
+          var stepCount = 0;
+          for (var i = 0; i < state.nodes.length; i++) {
+            if (state.nodes[i].focusGoal) focusCount++;
+            if (state.nodes[i].goalStep) stepCount++;
+          }
+          var info = 'Imported ' + state.nodes.length + ' nodes';
+          if (focusCount || stepCount) info += ' · 🎯 ' + focusCount + ' · 1️⃣ ' + stepCount;
+          toast(info, 'success');
+        } catch (err) {
+          toast('Could not parse JSON', 'error');
+        }
+      }
+
+      function getPointersDistance() {
+        var pts = Array.from(activePointers.values());
+        if (pts.length < 2) return 0;
+        var dx = pts[0].clientX - pts[1].clientX;
+        var dy = pts[0].clientY - pts[1].clientY;
+        return Math.hypot(dx, dy);
+      }
+
+      function getPointersCenter() {
+        var pts = Array.from(activePointers.values());
+        if (pts.length < 2) return { x: 0, y: 0 };
+        return {
+          x: (pts[0].clientX + pts[1].clientX) / 2,
+          y: (pts[0].clientY + pts[1].clientY) / 2
+        };
+      }
+
+      function scheduleDragUpdate() {
+        if (dragRAF || !pendingDragNode) return;
+        dragRAF = requestAnimationFrame(function () {
+          dragRAF = null;
+          var n = pendingDragNode;
+          pendingDragNode = null;
+          if (!n) return;
+          moveNodeEl(n);
+          refreshLinks(n.id);
+        });
+      }
+
+      function cleanupPointers() {
+        cancelLongPressTimer();
+        activePointers.clear();
+        initialPinchDist = null;
+        if (activeDrag) { save(); activeDrag = null; }
+        if (activePan) { save(); activePan = null; }
+        pendingDragNode = null;
+      }
+
+      function startLongPressTimer(id, clientX, clientY) {
+        cancelLongPressTimer();
+        longPressTargetId = id;
+        longPressTimer = setTimeout(function () {
+          longPressTimer = null;
+          var targetId = longPressTargetId;
+          longPressTargetId = null;
+          if (!targetId) return;
+          if (!activeDrag || activeDrag.node.id !== targetId) return;
+          activeDrag = null;
+          pendingDragNode = null;
+          showNodeContextMenu(targetId, clientX, clientY);
+        }, LONG_PRESS_MS);
+      }
+
+      function cancelLongPressTimer() {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+        longPressTargetId = null;
+      }
+
+      function showNodeContextMenu(id, clientX, clientY) {
+        var n = nodeIndex[id];
+        if (!n) return;
+        nodeMenuTargetId = id;
+
+        menu.classList.add('hidden');
+
+        nodeMenuTitle.textContent = n.title;
+        var isRoot = n.type === 'start';
+
+        var focusBtn = nodeMenu.querySelector('[data-action="focus"]');
+        var stepBtn = nodeMenu.querySelector('[data-action="step"]');
+        var delBtn = nodeMenu.querySelector('[data-action="delete"]');
+
+        focusBtn.disabled = isRoot;
+        stepBtn.disabled = isRoot;
+        delBtn.disabled = isRoot;
+
+        focusBtn.textContent = n.focusGoal ? '🎯 Clear Focus Goal' : '🎯 Set Focus Goal';
+        stepBtn.textContent = n.goalStep ? '1️⃣ Remove Step #' + n.goalStep : '1️⃣ Add Goal Step';
+
+        nodeMenu.style.left = '-9999px';
+        nodeMenu.style.top = '-9999px';
+        nodeMenu.classList.remove('hidden');
+
+        var rect = nodeMenu.getBoundingClientRect();
+        var margin = 16;
+        var x = clientX;
+        var y = clientY;
+
+        if (x + rect.width + margin > window.innerWidth) x = window.innerWidth - rect.width - margin;
+        if (y + rect.height + margin > window.innerHeight) y = y - rect.height;
+        if (x < margin) x = margin;
+        if (y < margin) y = margin;
+
+        nodeMenu.style.left = x + 'px';
+        nodeMenu.style.top = y + 'px';
+      }
+
+      function hideNodeContextMenu() {
+        nodeMenu.classList.add('hidden');
+        nodeMenuTargetId = null;
+      }
+
+      function initApp() {
+        svg = $('#canvas');
+        wrap = $('#canvas-wrap');
+        layerLinks = $('#layer-links');
+        layerNodes = $('#layer-nodes');
+        zoomPill = $('#zoom-pill');
+        selbar = $('#selbar');
+        selTitle = $('#sel-title');
+        menu = $('#menu');
+        modal = $('#modal');
+        modalImport = $('#modal-import');
+        focusPill = $('#focus-pill');
+        focusPillLabel = $('#focus-pill-label');
+        toastContainer = $('#toast-container');
+        nodeMenu = $('#node-menu');
+        nodeMenuTitle = $('#node-menu-title');
+
+        var loaded = load();
+        if (loaded) {
+          state = loaded;
+        } else {
+          state = defaultState();
+          computeAutoLayout();
+          save();
+        }
+
+        if (state.view && state.view.zoom) zoom = state.view.zoom;
+        applyZoom();
+        renderAll();
+        updateUndoButton();
+
+        if (loaded && state.view && state.view.x != null && state.view.y != null) {
+          var rect = wrap.getBoundingClientRect();
+          wrap.scrollLeft = state.view.x - rect.width / 2;
+          wrap.scrollTop = state.view.y - rect.height / 2;
+        } else {
+          centerView();
+        }
+
+        $('#btn-menu').addEventListener('click', function (e) {
+          e.stopPropagation();
+          menu.classList.toggle('hidden');
+          if (!menu.classList.contains('hidden')) hideNodeContextMenu();
+        });
+
+        document.addEventListener('click', function () { menu.classList.add('hidden'); });
+
+        document.addEventListener('pointerdown', function (e) {
+          if (!nodeMenu.classList.contains('hidden') && !nodeMenu.contains(e.target)) {
+            hideNodeContextMenu();
+          }
+        });
+
+        focusPill.addEventListener('click', function () {
+          var f = getFocusNode();
+          if (f) {
+            centerOn(f.x, f.y);
+            selectNode(f.id);
+          }
+        });
+
+        menu.addEventListener('click', function (e) {
+          var act = e.target.getAttribute('data-menu');
+          if (!act) return;
+          menu.classList.add('hidden');
+
+          if (act === 'center') centerView();
+          else if (act === 'layout') { computeAutoLayout(); renderAll(); save(); }
+          else if (act === 'focus') toggleFocusGoal(selectedId);
+          else if (act === 'step') toggleGoalStep(selectedId);
+          else if (act === 'clearSteps') clearAllSteps();
+          else if (act === 'export') copyJSONToClipboard();
+          else if (act === 'import') openImportModal();
+          else if (act === 'undo') undo();
+          else if (act === 'reset') resetTree();
+        });
+
+        nodeMenu.addEventListener('click', function (e) {
+          var action = e.target.getAttribute('data-action');
+          if (!action) return;
+          var id = nodeMenuTargetId;
+          hideNodeContextMenu();
+          if (!id) return;
+
+          var n = nodeIndex[id];
+          if (!n) return;
+
+          if (action === 'focus') toggleFocusGoal(id);
+          else if (action === 'step') toggleGoalStep(id);
+          else if (action === 'edit') openModal('edit', id);
+          else if (action === 'delete') {
+            if (n.type === 'start') { toast('Root cannot be deleted', 'error'); return; }
+            if (confirm('Delete this node and all child branches?')) deleteNodeAndSubtree(id);
+          }
+        });
+
+        document.addEventListener('keydown', function (e) {
+          if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+            e.preventDefault();
+            undo();
+          }
+        });
+
+        $('#btn-import-cancel').addEventListener('click', closeImportModal);
+        $('#btn-import-submit').addEventListener('click', processImport);
+        modalImport.addEventListener('click', function (e) { if (e.target === modalImport) closeImportModal(); });
+
+        selbar.addEventListener('click', function (e) {
+          var act = e.target.getAttribute('data-act');
+          if (!act || !selectedId) return;
+
+          if (act === 'add') openModal('add', selectedId);
+          else if (act === 'edit') openModal('edit', selectedId);
+          else if (act === 'del') {
+            var n = nodeIndex[selectedId];
+            if (n && n.type === 'start') { toast('Root cannot be deleted', 'error'); return; }
+            if (confirm('Delete this node and all child branches?')) deleteNodeAndSubtree(selectedId);
+          }
+        });
+
+        $('#in-type').addEventListener('change', updateModalVisibility);
+        $('#btn-cancel').addEventListener('click', closeModal);
+        $('#btn-save').addEventListener('click', saveModal);
+        modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+        wrap.addEventListener('wheel', function (e) {
+          e.preventDefault();
+          var factor = e.deltaY < 0 ? 1.12 : 0.89;
+          setZoom(zoom * factor, e.clientX, e.clientY);
+        }, { passive: false });
+
+        svg.addEventListener('contextmenu', function (e) {
+          e.preventDefault();
+          var nodeEl = e.target.closest ? e.target.closest('.node') : null;
+          if (nodeEl) {
+            var id = nodeEl.getAttribute('data-id');
+            if (id) {
+              selectNode(id);
+              showNodeContextMenu(id, e.clientX, e.clientY);
+            }
+          }
+        });
+
+        svg.addEventListener('pointerdown', function (e) {
+          activePointers.set(e.pointerId, e);
+
+          if (activePointers.size === 2) {
+            cancelLongPressTimer();
+            activeDrag = null;
+            activePan = null;
+            pendingDragNode = null;
+            initialPinchDist = getPointersDistance();
+            initialPinchZoom = zoom;
+            return;
+          }
+
+          if (activePointers.size === 1) {
+            var nodeEl = e.target.closest ? e.target.closest('.node') : null;
+            if (nodeEl) {
+              var id = nodeEl.getAttribute('data-id');
+              var n = nodeIndex[id];
+              if (n) {
+                selectNode(id);
+                activeDrag = {
+                  node: n,
+                  startX: n.x,
+                  startY: n.y,
+                  clientX: e.clientX,
+                  clientY: e.clientY
+                };
+                startLongPressTimer(id, e.clientX, e.clientY);
+              }
+            } else {
+              selectNode(null);
+              activePan = {
+                scrollLeft: wrap.scrollLeft,
+                scrollTop: wrap.scrollTop,
+                clientX: e.clientX,
+                clientY: e.clientY
+              };
+            }
+          }
+        });
+
+        svg.addEventListener('pointermove', function (e) {
+          if (activePointers.has(e.pointerId)) activePointers.set(e.pointerId, e);
+
+          if (activePointers.size === 2 && initialPinchDist) {
+            var dist = getPointersDistance();
+            if (dist > 0) {
+              var center = getPointersCenter();
+              var newZoom = initialPinchZoom * (dist / initialPinchDist);
+              setZoom(newZoom, center.x, center.y);
+            }
+            return;
+          }
+
+          if (activePointers.size === 1) {
+            if (activeDrag) {
+              var mdx = e.clientX - activeDrag.clientX;
+              var mdy = e.clientY - activeDrag.clientY;
+              if (Math.abs(mdx) > LONG_PRESS_MOVE_THRESHOLD || Math.abs(mdy) > LONG_PRESS_MOVE_THRESHOLD) {
+                cancelLongPressTimer();
+              }
+
+              var dx = mdx / zoom;
+              var dy = mdy / zoom;
+              activeDrag.node.x = Math.max(80, Math.min(WORLD_W - 80, activeDrag.startX + dx));
+              activeDrag.node.y = Math.max(80, Math.min(WORLD_H - 80, activeDrag.startY + dy));
+              pendingDragNode = activeDrag.node;
+              scheduleDragUpdate();
+            } else if (activePan) {
+              var pdx = e.clientX - activePan.clientX;
+              var pdy = e.clientY - activePan.clientY;
+              wrap.scrollLeft = activePan.scrollLeft - pdx;
+              wrap.scrollTop = activePan.scrollTop - pdy;
+              debouncedSave();
+            }
+          }
+        });
+
+        function handlePointerUp(e) {
+          cancelLongPressTimer();
+          activePointers.delete(e.pointerId);
+          if (activePointers.size < 2) initialPinchDist = null;
+          if (activeDrag) { save(); activeDrag = null; }
+          if (activePan) { save(); activePan = null; }
+          pendingDragNode = null;
+        }
+
+        svg.addEventListener('pointerup', handlePointerUp);
+        svg.addEventListener('pointercancel', handlePointerUp);
+        svg.addEventListener('pointerleave', handlePointerUp);
+
+        document.addEventListener('visibilitychange', function () {
+          if (document.hidden) cleanupPointers();
+        });
+        window.addEventListener('blur', cleanupPointers);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+      } else {
+        initApp();
+      }
+
+    })();
+</script>
+</body>
+</html>
