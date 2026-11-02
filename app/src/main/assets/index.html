@@ -241,18 +241,48 @@
           stroke-width: 3;
         }
 
+        .node-longpress-ready polygon,
+        .node-longpress-ready rect {
+          animation: longPressPulse 0.45s ease-in-out infinite alternate;
+        }
+
+        @keyframes longPressPulse {
+          from { filter: drop-shadow(0 0 4px var(--pulse-weak, rgba(59, 130, 246, 0.5))); }
+          to   { filter: drop-shadow(0 0 18px var(--pulse-strong, rgba(59, 130, 246, 1))); }
+        }
+
+        .node-start {
+          --pulse-weak:   rgba(245, 158, 11, 0.5);
+          --pulse-strong: rgba(245, 158, 11, 1);
+        }
         .node-start polygon { fill: #261e11; stroke: var(--gold); }
         .node-start .node-label { fill: #fef3c7; font-weight: 800; }
 
+        .node-branch {
+          --pulse-weak:   rgba(59, 130, 246, 0.5);
+          --pulse-strong: rgba(59, 130, 246, 1);
+        }
         .node-branch polygon { fill: #1e1e1e; stroke: var(--blue); }
         .node-branch .node-label { fill: #bfdbfe; font-weight: 700; }
 
+        .status-in_progress {
+          --pulse-weak:   rgba(100, 116, 139, 0.5);
+          --pulse-strong: rgba(100, 116, 139, 1);
+        }
         .status-in_progress rect { fill: #1e1e1e; stroke: var(--gray); }
         .status-in_progress .node-label { fill: #e2e8f0; }
 
+        .status-done {
+          --pulse-weak:   rgba(16, 185, 129, 0.5);
+          --pulse-strong: rgba(16, 185, 129, 1);
+        }
         .status-done rect { fill: #064e3b; stroke: var(--green); }
         .status-done .node-label { fill: #a7f3d0; }
 
+        .status-todo {
+          --pulse-weak:   rgba(239, 68, 68, 0.5);
+          --pulse-strong: rgba(239, 68, 68, 1);
+        }
         .status-todo rect { fill: #451a1a; stroke: var(--red); }
         .status-todo .node-label { fill: #fecaca; }
 
@@ -269,7 +299,8 @@
         }
         .link.status-done { stroke: #059669; }
         .link.status-todo { stroke: #dc2626; }
-        .link.status-in_progress { stroke: #3b82f6; }
+        .link.status-in_progress { stroke: var(--gray); }
+        .link.link-branch { stroke: var(--blue); }
 
         .zoom-pill {
           position: fixed;
@@ -1014,6 +1045,7 @@
 
           path = document.createElementNS(NS, 'path');
           var linkClass = 'link';
+          if (n.type === 'branch') linkClass += ' link-branch';
           if (n.type === 'task' && n.status) linkClass += ' status-' + n.status;
           path.setAttribute('class', linkClass);
           path.setAttribute('d', linkPath(p, n));
@@ -1471,7 +1503,12 @@
         cancelLongPressTimer();
         activePointers.clear();
         initialPinchDist = null;
-        if (activeDrag) { save(); activeDrag = null; }
+        if (activeDrag) {
+          var g = nodeEls[activeDrag.node.id];
+          if (g) g.classList.remove('node-longpress-ready');
+          save();
+          activeDrag = null;
+        }
         if (activePan) { save(); activePan = null; }
         pendingDragNode = null;
       }
@@ -1485,9 +1522,10 @@
           longPressTargetId = null;
           if (!targetId) return;
           if (!activeDrag || activeDrag.node.id !== targetId) return;
-          activeDrag = null;
-          pendingDragNode = null;
-          showNodeContextMenu(targetId, clientX, clientY);
+          if (activeDrag.moved) return;
+          activeDrag.longPressReady = true;
+          var g = nodeEls[targetId];
+          if (g) g.classList.add('node-longpress-ready');
         }, LONG_PRESS_MS);
       }
 
@@ -1691,6 +1729,10 @@
 
           if (activePointers.size === 2) {
             cancelLongPressTimer();
+            if (activeDrag) {
+              var g0 = nodeEls[activeDrag.node.id];
+              if (g0) g0.classList.remove('node-longpress-ready');
+            }
             activeDrag = null;
             activePan = null;
             pendingDragNode = null;
@@ -1711,7 +1753,11 @@
                   startX: n.x,
                   startY: n.y,
                   clientX: e.clientX,
-                  clientY: e.clientY
+                  clientY: e.clientY,
+                  lastX: e.clientX,
+                  lastY: e.clientY,
+                  moved: false,
+                  longPressReady: false
                 };
                 startLongPressTimer(id, e.clientX, e.clientY);
               }
@@ -1742,18 +1788,27 @@
 
           if (activePointers.size === 1) {
             if (activeDrag) {
+              activeDrag.lastX = e.clientX;
+              activeDrag.lastY = e.clientY;
+
               var mdx = e.clientX - activeDrag.clientX;
               var mdy = e.clientY - activeDrag.clientY;
-              if (Math.abs(mdx) > LONG_PRESS_MOVE_THRESHOLD || Math.abs(mdy) > LONG_PRESS_MOVE_THRESHOLD) {
+
+              if (!activeDrag.moved && (Math.abs(mdx) > LONG_PRESS_MOVE_THRESHOLD || Math.abs(mdy) > LONG_PRESS_MOVE_THRESHOLD)) {
+                activeDrag.moved = true;
                 cancelLongPressTimer();
+                var g = nodeEls[activeDrag.node.id];
+                if (g) g.classList.remove('node-longpress-ready');
               }
 
-              var dx = mdx / zoom;
-              var dy = mdy / zoom;
-              activeDrag.node.x = Math.max(80, Math.min(WORLD_W - 80, activeDrag.startX + dx));
-              activeDrag.node.y = Math.max(80, Math.min(WORLD_H - 80, activeDrag.startY + dy));
-              pendingDragNode = activeDrag.node;
-              scheduleDragUpdate();
+              if (activeDrag.moved) {
+                var dx = mdx / zoom;
+                var dy = mdy / zoom;
+                activeDrag.node.x = Math.max(80, Math.min(WORLD_W - 80, activeDrag.startX + dx));
+                activeDrag.node.y = Math.max(80, Math.min(WORLD_H - 80, activeDrag.startY + dy));
+                pendingDragNode = activeDrag.node;
+                scheduleDragUpdate();
+              }
             } else if (activePan) {
               var pdx = e.clientX - activePan.clientX;
               var pdy = e.clientY - activePan.clientY;
@@ -1768,7 +1823,18 @@
           cancelLongPressTimer();
           activePointers.delete(e.pointerId);
           if (activePointers.size < 2) initialPinchDist = null;
-          if (activeDrag) { save(); activeDrag = null; }
+
+          if (activeDrag) {
+            var g = nodeEls[activeDrag.node.id];
+            if (g) g.classList.remove('node-longpress-ready');
+
+            if (activeDrag.longPressReady && !activeDrag.moved) {
+              showNodeContextMenu(activeDrag.node.id, activeDrag.lastX, activeDrag.lastY);
+            }
+            save();
+            activeDrag = null;
+          }
+
           if (activePan) { save(); activePan = null; }
           pendingDragNode = null;
         }
