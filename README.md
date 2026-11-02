@@ -94,15 +94,13 @@ Long-press feedback: the node pulses in its **own type color** (gold / blue / gr
 
 ## 🗂️ Project Structure
 
-SkillTree/
-├── app/
-│ └── src/
-│ └── main/
-│ └── assets/
-│ └── index.html ← the entire app
-└── build/ ← generated build artifacts
-text
-
+    SkillTree/
+    ├── app/
+    │   └── src/
+    │       └── main/
+    │           └── assets/
+    │               └── index.html      ← the entire app
+    └── build/                          ← generated build artifacts
 
 All logic, styling and markup live in **`app/src/main/assets/index.html`**. Edit that file only — the copies under `app/build/` are regenerated on build.
 
@@ -121,77 +119,84 @@ All logic, styling and markup live in **`app/src/main/assets/index.html`**. Edit
 
 State is stored as a single JSON blob:
 
-```json
-{
-  "nodes": [
     {
-      "id": "abc123",
-      "type": "start | branch | task",
-      "title": "Life",
-      "description": "",
-      "parentId": null,
-      "status": "in_progress | done | todo",
-      "focusGoal": true,
-      "goalStep": 1,
-      "x": 2000,
-      "y": 300
+      "nodes": [
+        {
+          "id": "abc123",
+          "type": "start",
+          "title": "Life",
+          "description": "",
+          "parentId": null,
+          "x": 2000,
+          "y": 300
+        },
+        {
+          "id": "def456",
+          "type": "branch",
+          "title": "Career",
+          "description": "",
+          "parentId": "abc123",
+          "x": 2000,
+          "y": 520
+        },
+        {
+          "id": "ghi789",
+          "type": "task",
+          "title": "Master Kotlin",
+          "description": "Finish the advanced course",
+          "parentId": "def456",
+          "status": "in_progress",
+          "focusGoal": true,
+          "goalStep": 1,
+          "x": 2000,
+          "y": 700
+        }
+      ],
+      "view": { "x": 2000, "y": 600, "zoom": 1 }
     }
-  ],
-  "view": { "x": 2000, "y": 600, "zoom": 1 }
-}
 
-    type: "start" is the root and cannot be deleted
+- `type: "start"` is the root and cannot be deleted
+- `type` is one of `"start"`, `"branch"`, `"task"`
+- `status` (`in_progress` | `done` | `todo`) applies only to tasks
+- `focusGoal: true` on at most one task
+- `goalStep` is a unique positive integer; renumbered automatically
+- `view` remembers the last camera position
 
-    focusGoal: true on at most one task
+---
 
-    goalStep is a unique positive integer; renumbered automatically
+## 🧭 Tips
 
-    view remembers the last camera position
+- Start by tapping the **⭐ Life** node → **+ Child** → add your first category
+- Give every branch a clear name ("Career", "Health", "Skills") before nesting tasks inside
+- Set a **focus goal** to keep one task highlighted while you explore the rest
+- Use **Auto Layout** whenever you've been dragging nodes around and want a tidy view
+- Back up your tree with **Copy JSON** and paste it into a note — it's your portable snapshot
 
-🧭 Tips
+---
 
-    Start by tapping the ⭐ Life node → + Child → add your first category
+## 📝 Changelog
 
-    Give every branch a clear name ("Career", "Health", "Skills") before nesting tasks inside
+### 3.0
+- 🎨 Swapped link colors: **in-progress** links are gray, **category** links stay blue
+- 🔵 Node outlines: in-progress tasks now use **gray**, categories remain blue
+- ✨ **Long-press pulse now matches node type color** (gold / blue / gray / green / red) for instant feedback
+- 🖱️ Improved long-press interaction: menu opens **on release**, not mid-hold — dragging is never interrupted
+- 🎯 Long-press visual feedback prevents accidental menu opening
+- 📖 Added this README
+- 📄 Licensed under MIT
 
-    Set a focus goal to keep one task highlighted while you explore the rest
+### 2.x
+- Undo system (delete + reset)
+- Import / Export JSON
+- Auto Layout
+- Focus Goal & Goal Steps
 
-    Use Auto Layout whenever you've been dragging nodes around and want a tidy view
+### 1.x
+- Initial release: SVG tree, node editing, pan/zoom, local persistence
 
-    Back up your tree with Copy JSON and paste it into a note — it's your portable snapshot
+---
 
-📝 Changelog
-3.0
-
-    🎨 Swapped link colors: in-progress links are gray, category links stay blue
-
-    🔵 Node outlines: in-progress tasks now use gray, categories remain blue
-
-    ✨ Long-press pulse now matches node type color (gold / blue / gray / green / red) for instant feedback
-
-    🖱️ Improved long-press interaction: menu opens on release, not mid-hold — dragging is never interrupted
-
-    🎯 Long-press visual feedback prevents accidental menu opening
-
-    📖 Added this README
-
-    📄 Licensed under MIT
-
-2.x
-
-    Undo system (delete + reset)
-
-    Import / Export JSON
-
-    Auto Layout
-
-    Focus Goal & Goal Steps
-
-1.x
-
-    Initial release: SVG tree, node editing, pan/zoom, local persistence
-
-📄 License
+## 📄 License
 
 MIT License
 
